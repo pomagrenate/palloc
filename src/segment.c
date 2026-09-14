@@ -990,6 +990,7 @@ static pa_segment_t* pa_segment_alloc(size_t required, size_t page_alignment, pa
   segment->segment_slices = segment_slices;
   segment->segment_info_slices = info_slices;
   segment->thread_id = _pa_thread_id();
+  segment->node_id   = (uint16_t)(unsigned)_pa_os_numa_node();  /* NUMA-aware page grouping */
   segment->cookie = _pa_ptr_cookie(segment);
   segment->slice_entries = slice_entries;
   segment->kind = (required == 0 ? PA_SEGMENT_NORMAL : PA_SEGMENT_HUGE);

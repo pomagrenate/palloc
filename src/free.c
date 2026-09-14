@@ -63,6 +63,7 @@ static inline void pa_free_block_local(pa_page_t* page, pa_block_t* block, bool 
     // Flush any blocks from this page that are still in the thread cache so we don't retire with dangling cache entries
     if (bin < PA_CACHE_BINS && heap->cache_count[bin] > 0)
       pa_heap_cache_flush_page(heap, page);
+    _pa_page_free_collect(page, false);
     _pa_page_retire(page);
   }
   else if pa_unlikely(check_full && pa_page_is_in_full(page)) {

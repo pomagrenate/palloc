@@ -649,9 +649,12 @@ void _pa_auto_process_init(void) {
 }
 
 #if (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__))
-#ifdef _WIN32
+#if defined(_MSC_VER)
 #include <intrin.h>
-#else
+static void _pa_cpuid(int32_t cpu_info[4], int32_t eax) {
+  __cpuidex(cpu_info, eax, 0);
+}
+#elif defined(__GNUC__) || defined(__clang__)
 #include <cpuid.h>
 #include <immintrin.h>
 static void _pa_cpuid(int32_t cpu_info[4], int32_t eax) {

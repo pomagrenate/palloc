@@ -231,7 +231,7 @@ typedef int32_t  pa_ssize_t;
 
 // we never allocate more than PTRDIFF_MAX (see also <https://sourceware.org/ml/libc-announce/2019/msg00001.html>)
 // on 64-bit+ systems we also limit the maximum allocation size such that the slice count fits in 32-bits. (issue #877)
-#if (PTRDIFF_MAX > INT32_MAX) && (PTRDIFF_MAX >= (PA_SEGMENT_SLIZE_SIZE * UINT32_MAX))
+#if (PTRDIFF_MAX > INT32_MAX) && (PTRDIFF_MAX >= (PA_SEGMENT_SLICE_SIZE * UINT32_MAX))
 #define PA_MAX_ALLOC_SIZE   (PA_SEGMENT_SLICE_SIZE * (UINT32_MAX-1))
 #else
 #define PA_MAX_ALLOC_SIZE   PTRDIFF_MAX
@@ -479,6 +479,7 @@ typedef struct pa_segment_s {
   bool              allow_purge;        // can we purge the memory (reset or decommit)
   size_t            segment_size;
   pa_subproc_t*     subproc;            // segment belongs to sub process
+  uint16_t          node_id;            // NUMA node ID of the allocating thread
 
   // segment fields
   pa_msecs_t        purge_expire;       // purge slices in the `purge_mask` after this time

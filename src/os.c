@@ -127,7 +127,8 @@ void* _pa_os_get_aligned_hint(size_t try_alignment, size_t size)
   if (hint == 0 || hint > PA_HINT_MAX) {   // wrap or initialize
     uintptr_t init = PA_HINT_BASE;
     #if (PA_SECURE>0 || PA_DEBUG==0)       // security: randomize start of aligned allocations unless in debug mode
-    uintptr_t r = _pa_heap_random_next(pa_prim_get_default_heap());
+    pa_heap_t* heap = pa_prim_get_default_heap();
+    uintptr_t r = pa_heap_is_initialized(heap) ? _pa_heap_random_next(heap) : _pa_os_random_weak(37);
     init = init + ((PA_SEGMENT_SIZE * ((r>>17) & 0xFFFFF)) % PA_HINT_AREA);  // (randomly 20 bits)*4MiB == 0 to 4TiB
     #endif
     uintptr_t expected = hint + size;

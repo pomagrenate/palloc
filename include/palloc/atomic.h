@@ -247,7 +247,7 @@ static inline int64_t pa_atomic_loadi64_explicit(_Atomic(int64_t)*p, pa_memory_o
 }
 static inline void pa_atomic_storei64_explicit(_Atomic(int64_t)*p, int64_t x, pa_memory_order mo) {
   (void)(mo);
-#if defined(x_M_IX86) || defined(_M_X64)
+#if defined(_M_IX86) || defined(_M_X64)
   *p = x;
 #else
   InterlockedExchange64(p, x);
@@ -282,11 +282,11 @@ static inline void pa_atomic_maxi64_relaxed(volatile _Atomic(int64_t)*p, int64_t
   } while (current < x && _InterlockedCompareExchange64(p, x, current) != current);
 }
 
-static inline void pa_atomic_addi64_acq_rel(volatile _Atomic(int64_t*)p, int64_t i) {
+static inline void pa_atomic_addi64_acq_rel(volatile _Atomic(int64_t)* p, int64_t i) {
   pa_atomic_addi64_relaxed(p, i);
 }
 
-static inline bool pa_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, int64_t* exp, int64_t des) {
+static inline bool pa_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t)* p, int64_t* exp, int64_t des) {
   int64_t read = _InterlockedCompareExchange64(p, des, *exp);
   if (read == *exp) {
     return true;

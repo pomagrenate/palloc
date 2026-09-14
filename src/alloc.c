@@ -329,8 +329,7 @@ void* _pa_heap_realloc_zero(pa_heap_t* heap, void* p, size_t newsize, bool zero,
   void* newp = pa_heap_umalloc(heap,newsize,usable_post);
   if pa_likely(newp != NULL) {
     if (zero && newsize > size) {
-      const size_t start = (size >= sizeof(intptr_t) ? size - sizeof(intptr_t) : 0);
-      _pa_memzero((uint8_t*)newp + start, newsize - start);
+      _pa_memzero((uint8_t*)newp + size, newsize - size);
     }
     else if (newsize == 0) {
       ((uint8_t*)newp)[0] = 0; // work around for applications that expect zero-reallocation to be zero initialized (issue #725)

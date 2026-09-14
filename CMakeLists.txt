@@ -860,7 +860,7 @@ if (PA_BUILD_TESTS)
   enable_testing()
 
   # static link tests
-  foreach(TEST_NAME api api-fill stress arena-pomai basic)
+  foreach(TEST_NAME api api-fill stress arena-pomai vector basic)
     add_executable(palloc-test-${TEST_NAME} test/test-${TEST_NAME}.c)
     target_compile_definitions(palloc-test-${TEST_NAME} PRIVATE ${pa_defines})
     target_compile_options(palloc-test-${TEST_NAME} PRIVATE ${pa_cflags})
