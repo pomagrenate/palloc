@@ -720,59 +720,73 @@ static void pa_detect_cpu_features(void) {
 
 // Initialize the process; called by thread_init or the process loader
 void pa_process_init(void) pa_attr_noexcept {
-  // ensure we are called once
-  static pa_atomic_once_t process_init;
+  static _Atomic(uintptr_t) process_init_state = PA_ATOMIC_VAR_INIT(0);
+  static _Atomic(pa_threadid_t) process_init_thread = PA_ATOMIC_VAR_INIT(0);
+
+  if (pa_atomic_load_acquire(&process_init_state) == 2) return;
+  if (pa_atomic_load_relaxed(&process_init_thread) == _pa_thread_id()) return;
+
+  uintptr_t expected = 0;
+  if (pa_atomic_cas_strong_acq_rel(&process_init_state, &expected, (uintptr_t)1)) {
+    pa_atomic_store_relaxed(&process_init_thread, _pa_thread_id());
 	#if _MSC_VER < 1920
 	pa_heap_main_init(); // vs2017 can dynamically re-initialize _pa_heap_main
 	#endif
-  if (!pa_atomic_once(&process_init)) return;
-  _pa_process_is_initialized = true;
-  pa_process_setup_auto_thread_done();
+    _pa_process_is_initialized = true;
+    pa_process_setup_auto_thread_done();
 
-  pa_detect_cpu_features();
-  _pa_os_init();
-  pa_heap_main_init();
-  _pa_size2bin_table_init();  // O(1) size->bin lookup for common sizes
-  pa_thread_init();
+    pa_detect_cpu_features();
+    _pa_os_init();
+    pa_heap_main_init();
+    _pa_size2bin_table_init();  // O(1) size->bin lookup for common sizes
+    pa_thread_init();
 
-  #if defined(_WIN32)
-  // On windows, when building as a static lib the FLS cleanup happens to early for the main thread.
-  // To avoid this, set the FLS value for the main thread to NULL so the fls cleanup
-  // will not call _pa_thread_done on the (still executing) main thread. See issue #508.
-  _pa_prim_thread_associate_default_heap(NULL);
+    #if defined(_WIN32)
+    // On windows, when building as a static lib the FLS cleanup happens to early for the main thread.
+    // To avoid this, set the FLS value for the main thread to NULL so the fls cleanup
+    // will not call _pa_thread_done on the (still executing) main thread. See issue #508.
+    _pa_prim_thread_associate_default_heap(NULL);
+    #endif
+
+    pa_stats_reset();  // only call stat reset *after* thread init (or the heap tld == NULL)
+    pa_track_init();
+
+    if (pa_option_is_enabled(pa_option_reserve_huge_os_pages)) {
+      size_t pages = pa_option_get_clamp(pa_option_reserve_huge_os_pages, 0, 128*1024);
+      int reserve_at  = (int)pa_option_get_clamp(pa_option_reserve_huge_os_pages_at, -1, INT_MAX);
+      if (reserve_at != -1) {
+        pa_reserve_huge_os_pages_at(pages, reserve_at, pages*500);
+      } else {
+        pa_reserve_huge_os_pages_interleave(pages, 0, pages*500);
+      }
+    }
+    if (pa_option_is_enabled(pa_option_reserve_os_memory)) {
+      long ksize = pa_option_get(pa_option_reserve_os_memory);
+      if (ksize > 0) {
+        pa_reserve_os_memory((size_t)ksize*PA_KiB, true /* commit? */, true /* allow large pages? */);
+      }
+    }
+
+  #if defined(PA_USE_PTHREADS)
+    if (pa_option_is_enabled(pa_option_purge_background)) {
+      int err = pthread_create(&pa_background_thread, NULL, pa_background_purge_worker, NULL);
+      if (err == 0) {
+        pa_atomic_store_release(&pa_background_thread_running, true);
+      } else {
+        _pa_error_message(err, "failed to create background purge thread\n");
+      }
+    } else {
+    }
+  #else
   #endif
-
-  pa_stats_reset();  // only call stat reset *after* thread init (or the heap tld == NULL)
-  pa_track_init();
-
-  if (pa_option_is_enabled(pa_option_reserve_huge_os_pages)) {
-    size_t pages = pa_option_get_clamp(pa_option_reserve_huge_os_pages, 0, 128*1024);
-    int reserve_at  = (int)pa_option_get_clamp(pa_option_reserve_huge_os_pages_at, -1, INT_MAX);
-    if (reserve_at != -1) {
-      pa_reserve_huge_os_pages_at(pages, reserve_at, pages*500);
-    } else {
-      pa_reserve_huge_os_pages_interleave(pages, 0, pages*500);
-    }
-  }
-  if (pa_option_is_enabled(pa_option_reserve_os_memory)) {
-    long ksize = pa_option_get(pa_option_reserve_os_memory);
-    if (ksize > 0) {
-      pa_reserve_os_memory((size_t)ksize*PA_KiB, true /* commit? */, true /* allow large pages? */);
-    }
+    pa_atomic_store_release(&process_init_state, 2);
+    return;
   }
 
-#if defined(PA_USE_PTHREADS)
-  if (pa_option_is_enabled(pa_option_purge_background)) {
-    int err = pthread_create(&pa_background_thread, NULL, pa_background_purge_worker, NULL);
-    if (err == 0) {
-      pa_atomic_store_release(&pa_background_thread_running, true);
-    } else {
-      _pa_error_message(err, "failed to create background purge thread\n");
-    }
-  } else {
+  // Another thread is initializing; wait until it finishes:
+  while (pa_atomic_load_acquire(&process_init_state) != 2) {
+    pa_atomic_yield();
   }
-#else
-#endif
 }
 
 // Called when the process is done (cdecl as it is used with `at_exit` on some platforms)

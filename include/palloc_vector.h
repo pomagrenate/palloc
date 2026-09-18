@@ -19,7 +19,7 @@ extern "C" {
  * Allocate size bytes with the given alignment (e.g. for SIMD).
  * Uses the default heap. Thin wrapper around pa_malloc_aligned.
  */
-static inline pa_decl_nodiscard void* pa_vector_alloc_aligned(size_t size, size_t alignment) pa_attr_noexcept {
+pa_decl_nodiscard static inline void* pa_vector_alloc_aligned(size_t size, size_t alignment) pa_attr_noexcept {
   return pa_malloc_aligned(size, alignment);
 }
 
@@ -28,7 +28,7 @@ static inline pa_decl_nodiscard void* pa_vector_alloc_aligned(size_t size, size_
  * Returns (float*) to aligned memory; caller can use as float[dim].
  * Returns NULL if dim is 0 or if dim*sizeof(float) would overflow.
  */
-static inline pa_decl_nodiscard float* pa_vector_alloc_floats(size_t dim) pa_attr_noexcept {
+pa_decl_nodiscard static inline float* pa_vector_alloc_floats(size_t dim) pa_attr_noexcept {
   if (dim == 0 || dim > (size_t)-1 / sizeof(float)) return NULL;
   return (float*)pa_vector_alloc_aligned(dim * sizeof(float), PA_VECTOR_ALIGNMENT_DEFAULT);
 }

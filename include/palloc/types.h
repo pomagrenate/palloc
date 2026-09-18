@@ -562,10 +562,10 @@ typedef struct pa_padding_s {
 
 #define PA_PAGES_DIRECT   (PA_SMALL_WSIZE_MAX + PA_PADDING_WSIZE + 1)
 
-// Thread cache (tcmalloc-style): per-bin free lists to avoid touching page queues on hot path.
+// Thread cache disabled: prevents dangling block reuse across page retire/reclaim lifecycle
 #define PA_CACHE_BINS           (PA_BIN_HUGE + 1)
-#define PA_CACHE_MAX_PER_BIN    (48)
-#define PA_CACHE_REFILL         (16)   // batch refill from page when we miss (tcmalloc-style)
+#define PA_CACHE_MAX_PER_BIN    (0)
+#define PA_CACHE_REFILL         (0)
 
 // A heap owns a set of pages.
 struct pa_heap_s {

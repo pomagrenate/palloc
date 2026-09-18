@@ -1446,21 +1446,6 @@ static pa_segment_t* pa_segment_try_reclaim(pa_heap_t* heap, size_t needed_slice
   return result;
 }
 
-static void pa_segment_zero_free(pa_segment_t* segment) {
-  if (segment->free_is_zero) return;
-  const pa_slice_t* end;
-  pa_slice_t* slice = pa_slices_start_iterate(segment, &end);
-  while (slice < end) {
-    if (!pa_slice_is_used(slice)) {
-      size_t size = slice->slice_count * PA_SEGMENT_SLICE_SIZE;
-      void* p = _pa_segment_page_start(segment, slice, NULL);
-      _pa_memzero_aligned(p, size);
-    }
-    slice += slice->slice_count;
-  }
-  segment->free_is_zero = true;
-}
-
 // collect abandoned segments
 void _pa_abandoned_collect(pa_heap_t* heap, bool force, pa_segments_tld_t* tld)
 {
@@ -1478,9 +1463,6 @@ void _pa_abandoned_collect(pa_heap_t* heap, bool force, pa_segments_tld_t* tld)
     else {
       // otherwise, purge if needed and push on the visited list
       // note: forced purge can be expensive if many threads are destroyed/created as in mstress.
-      if (pa_option_is_enabled(pa_option_zero_background)) {
-        pa_segment_zero_free(segment);
-      }
       pa_segment_try_purge(segment, force);
       _pa_arena_segment_mark_abandoned(segment);
     }
